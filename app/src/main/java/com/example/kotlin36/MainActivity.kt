@@ -12,11 +12,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import com.example.kotlin36.databinding.ActivityMainBinding
-import com.example.kotlin36.preference.PreferenceHelper
-
-private lateinit var binding: ActivityMainBinding
-
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
     override fun onCreate(savedInstanceState: Bundle?) {
         binding = ActivityMainBinding.inflate(layoutInflater)
         super.onCreate(savedInstanceState)
@@ -24,14 +22,27 @@ class MainActivity : AppCompatActivity() {
         setupListeners()
         openGallery()
     }
+
     private val getContent =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            binding?.ivImage?.setImageURI(uri)
+            binding.ivImage.setImageURI(uri)
         }
 
+    private val requestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            Log.e("isGranted", isGranted.toString())
+            if (isGranted) {
+                shouldShowRequestPermissionRationale(
+                    "Разрешение есть"
+                )
+            } else {
+                createDialog()
+            }
+        }
 
     private fun setupListeners() = with(binding) {
-        var preferenceHelper = PreferenceHelper(this@MainActivity).isHasPermission
         btnScip.setOnClickListener {
             if (ActivityCompat.checkSelfPermission(
                     this@MainActivity,
@@ -40,16 +51,8 @@ class MainActivity : AppCompatActivity() {
             ) {
                 Log.e("permission", "разрешение есть")
             } else {
-                if (!preferenceHelper) {
-                    ActivityCompat.requestPermissions(
-                        this@MainActivity,
-                        arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                        1
-                    )
-                    preferenceHelper = true
-                } else {
-                    createDialog()
-                }
+                requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+
             }
         }
     }
@@ -58,17 +61,16 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Разрешение на чтение данных")
             .setMessage("Перейти настройки")
-            .setPositiveButton("да перейти") { dialog, k ->
+            .setPositiveButton("да перейти") { _, _ ->
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 val uri = Uri.fromParts("package", packageName, null)
                 intent.data = uri
                 startActivity(intent)
             }
-            .setNegativeButton(" нет я хочу остаться ") { dialog, k ->
+            .setNegativeButton(" нет я хочу остаться ") { _, _ ->
             }
             .show()
     }
-
     private fun openGallery() {
         binding.ivImage.setOnClickListener {
             getContent.launch("image/*")
